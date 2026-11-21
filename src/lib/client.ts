@@ -19,19 +19,65 @@ export class ApiClientError extends Error {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Bearer-token fallback.
+ * Embedded previews render the app inside a cross-site iframe where the
+ * browser blocks cookies. We mirror the session JWT in localStorage and send
+ * it as an Authorization bearer so login works in every context. The HttpOnly
+ * cookie remains the primary session mechanism for normal top-level use.
+ * ------------------------------------------------------------------ */
+const TOKEN_KEY = 'cg_session_token';
+
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (token) window.localStorage.setItem(TOKEN_KEY, token);
+    else window.localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage unavailable (private mode) — cookie path still works */
+  }
+}
+
+/** Media/file URL that works even when cookies are blocked (?t= bearer). */
+export function mediaUrl(storageKey: string | null | undefined): string {
+  if (!storageKey) return '';
+  const token = getAuthToken();
+  return token
+    ? `/api/media/${storageKey}?t=${encodeURIComponent(token)}`
+    : `/api/media/${storageKey}`;
+}
+
+export function downloadUrl(clipId: string): string {
+  const token = getAuthToken();
+  return token
+    ? `/api/clips/${clipId}/download?t=${encodeURIComponent(token)}`
+    : `/api/clips/${clipId}/download`;
+}
+
 export async function api<T = unknown>(
   path: string,
   init?: RequestInit & { json?: unknown },
 ): Promise<T> {
+  const token = getAuthToken();
   const res = await fetch(path, {
     ...init,
     headers: {
       ...(init?.json !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
     body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
   });
-  let payload: { ok: boolean; data?: T; error?: ApiErrorBody } | null = null;
+  let payload: { ok: boolean; data?: T & { token?: string }; error?: ApiErrorBody } | null = null;
   try {
     payload = await res.json();
   } catch {
@@ -43,6 +89,13 @@ export async function api<T = unknown>(
       payload?.error?.code ?? 'error',
       payload?.error?.message ?? `Request failed (${res.status})`,
     );
+  }
+  // Persist the session token returned by login/register; drop it on logout.
+  if (path === '/api/auth/login' || path === '/api/auth/register') {
+    const t = (payload.data as { token?: string } | undefined)?.token;
+    if (t) setAuthToken(t);
+  } else if (path === '/api/auth/logout') {
+    setAuthToken(null);
   }
   return payload.data as T;
 }

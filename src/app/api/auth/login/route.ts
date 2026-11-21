@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { queryOne } from '@/lib/db';
-import { setSessionCookie, verifyPassword, type SessionUser } from '@/lib/auth';
+import { createSessionToken, setSessionCookie, verifyPassword, type SessionUser } from '@/lib/auth';
 import { apiHandler, jsonOk, parseBody, ApiError } from '@/lib/api';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -23,7 +23,11 @@ export const POST = apiHandler('auth/login', async (req) => {
   }
   if (user.banned) throw new ApiError(403, 'This account has been suspended', 'banned');
 
-  const res = jsonOk({ user: { id: user.id, email: user.email, name: user.name, role: user.role, plan: user.plan } });
-  await setSessionCookie(res, user);
+  const res = jsonOk({
+    user: { id: user.id, email: user.email, name: user.name, role: user.role, plan: user.plan },
+    // Bearer fallback for embedded previews where cookies are blocked.
+    token: await createSessionToken(user),
+  });
+  await setSessionCookie(res, user, req);
   return res;
 });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { queryOne } from '@/lib/db';
-import { hashPassword, setSessionCookie, type SessionUser } from '@/lib/auth';
+import { hashPassword, setSessionCookie, createSessionToken, type SessionUser } from '@/lib/auth';
 import { apiHandler, jsonOk, parseBody, ApiError } from '@/lib/api';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { env } from '@/lib/env';
@@ -34,7 +34,14 @@ export const POST = apiHandler('auth/register', async (req) => {
   await queryOne(`INSERT INTO subscriptions (user_id, plan, status) VALUES ($1, 'free', 'active')`, [user.id]);
   sendWelcomeEmail(user.email, user.name).catch(() => {});
 
-  const res = jsonOk({ user }, { status: 201 });
-  await setSessionCookie(res, user);
+  const res = jsonOk(
+    {
+      user,
+      // Bearer fallback for embedded previews where cookies are blocked.
+      token: await createSessionToken(user),
+    },
+    { status: 201 },
+  );
+  await setSessionCookie(res, user, req);
   return res;
 });

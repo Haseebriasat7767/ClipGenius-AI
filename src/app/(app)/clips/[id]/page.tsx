@@ -38,7 +38,7 @@ import {
   useToast,
   cn,
 } from '@/components/ui';
-import { api, ApiClientError, usePolling } from '@/lib/client';
+import { api, ApiClientError, usePolling, mediaUrl, downloadUrl } from '@/lib/client';
 import { formatDuration } from '@/lib/utils';
 
 interface TranscriptSegment {
@@ -254,7 +254,7 @@ export default function ClipEditorPage({ params }: { params: { id: string } }) {
 
   const download = () => {
     const a = document.createElement('a');
-    a.href = `/api/clips/${id}/download`;
+    a.href = downloadUrl(id);
     a.download = '';
     document.body.appendChild(a);
     a.click();
@@ -347,7 +347,7 @@ export default function ClipEditorPage({ params }: { params: { id: string } }) {
                   key={clip.video_path}
                   controls
                   className="max-h-[600px] rounded-xl border border-white/10 bg-black"
-                  src={`/api/media/${clip.video_path}`}
+                  src={mediaUrl(clip.video_path)}
                 />
               </div>
             ) : (
@@ -355,7 +355,7 @@ export default function ClipEditorPage({ params }: { params: { id: string } }) {
                 <video
                   ref={videoRef}
                   className="w-full rounded-xl border border-white/10 bg-black"
-                  src={fetched.project.source_path ? `/api/media/${fetched.project.source_path}` : undefined}
+                  src={fetched.project.source_path ? mediaUrl(fetched.project.source_path) : undefined}
                   onPlay={() => setPlaying(true)}
                   onPause={() => setPlaying(false)}
                   preload="metadata"

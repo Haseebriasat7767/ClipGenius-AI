@@ -12,7 +12,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Badge, Button, Card, Modal, Select, Spinner, useToast } from '@/components/ui';
-import { api, ApiClientError, usePolling } from '@/lib/client';
+import { api, ApiClientError, usePolling, mediaUrl, downloadUrl } from '@/lib/client';
 import { formatDuration, timeAgo } from '@/lib/utils';
 
 interface ClipRow {
@@ -67,7 +67,7 @@ export default function ClipsLibraryPage() {
 
   const download = (clip: ClipRow) => {
     const a = document.createElement('a');
-    a.href = `/api/clips/${clip.id}/download`;
+    a.href = downloadUrl(clip.id);
     a.download = '';
     document.body.appendChild(a);
     a.click();
@@ -131,7 +131,7 @@ export default function ClipsLibraryPage() {
                 <div className="relative aspect-[9/16] overflow-hidden bg-ink-900">
                   {clip.thumbnail_path ? (
                     <img
-                      src={`/api/media/${clip.thumbnail_path}`}
+                      src={mediaUrl(clip.thumbnail_path)}
                       alt={clip.title}
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
                     />

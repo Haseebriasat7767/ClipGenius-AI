@@ -15,8 +15,8 @@ export const PATCH = apiHandler('auth/update-profile', async (req) => {
   return jsonOk({ user });
 });
 
-export const GET = apiHandler('auth/me', async () => {
-  const user = await getSessionUser();
+export const GET = apiHandler('auth/me', async (req) => {
+  const user = await getSessionUser(req);
   if (!user) return jsonOk({ user: null });
 
   const usage = await queryOne<{

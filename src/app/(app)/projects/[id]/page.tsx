@@ -17,7 +17,7 @@ import {
   Brain,
 } from 'lucide-react';
 import { Badge, Button, Card, Modal, Progress, Spinner, useToast, cn } from '@/components/ui';
-import { api, ApiClientError, usePolling } from '@/lib/client';
+import { api, ApiClientError, usePolling, mediaUrl } from '@/lib/client';
 import { formatDuration, formatBytes, timeAgo } from '@/lib/utils';
 
 interface ClipRow {
@@ -229,7 +229,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               controls
               preload="metadata"
               className="mt-4 w-full rounded-xl border border-white/10 bg-black"
-              src={`/api/media/${p.source_path}`}
+              src={mediaUrl(p.source_path)}
             />
           ) : (
             <div className="mt-4 rounded-xl border border-white/10 bg-ink-900 p-8 text-center text-sm text-gray-500">
@@ -297,7 +297,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <div className="relative aspect-[9/16] overflow-hidden bg-ink-900">
                   {clip.thumbnail_path ? (
                     <img
-                      src={`/api/media/${clip.thumbnail_path}`}
+                      src={mediaUrl(clip.thumbnail_path)}
                       alt={clip.title}
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
                     />
