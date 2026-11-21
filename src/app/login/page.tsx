@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Zap, Mail, Lock, User } from 'lucide-react';
 import { Button, Input, useToast } from '@/components/ui';
-import { api, ApiClientError } from '@/lib/client';
+import { api, ApiClientError, probeConnectivity } from '@/lib/client';
 
 function AuthShell({
   title,
@@ -60,7 +60,14 @@ export default function LoginPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Login failed');
+      if (err instanceof ApiClientError) {
+        setError(err.message);
+        if (err.code === 'network' || err.code === 'timeout') {
+          probeConnectivity().then((diag) => setError(`${err.message} ${diag}`)).catch(() => {});
+        }
+      } else {
+        setError('Login failed');
+      }
     } finally {
       setLoading(false);
     }

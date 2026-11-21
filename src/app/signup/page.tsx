@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Zap } from 'lucide-react';
 import { Button, Input, useToast } from '@/components/ui';
-import { api, ApiClientError } from '@/lib/client';
+import { api, ApiClientError, probeConnectivity } from '@/lib/client';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -37,7 +37,14 @@ export default function SignupPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Signup failed');
+      if (err instanceof ApiClientError) {
+        setError(err.message);
+        if (err.code === 'network' || err.code === 'timeout') {
+          probeConnectivity().then((diag) => setError(`${err.message} ${diag}`)).catch(() => {});
+        }
+      } else {
+        setError('Signup failed');
+      }
     } finally {
       setLoading(false);
     }

@@ -34,3 +34,7 @@ export const POST = apiHandler('auth/reset-password', async (req) => {
 
   return jsonOk({ message: 'Password updated — you can now sign in.' });
 });
+
+/** PUT alias: some embedded-preview proxies filter POST; the client
+ *  retries POST failures as PUT with X-HTTP-Method-Override. */
+export const PUT = POST;

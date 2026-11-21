@@ -39,3 +39,7 @@ export const POST = apiHandler('auth/forgot-password', async (req) => {
     ...(result.delivered ? {} : { dev_mode: true, reset_link: resetUrl }),
   });
 });
+
+/** PUT alias: some embedded-preview proxies filter POST; the client
+ *  retries POST failures as PUT with X-HTTP-Method-Override. */
+export const PUT = POST;

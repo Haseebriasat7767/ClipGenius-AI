@@ -68,29 +68,48 @@ export async function api<T = unknown>(
   init?: RequestInit & { json?: unknown },
 ): Promise<T> {
   const token = getAuthToken();
+  const method = (init?.method ?? 'GET').toUpperCase();
+  const baseHeaders = {
+    ...(init?.json !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init?.headers ?? {}),
+  };
+  const body = init?.json !== undefined ? JSON.stringify(init.json) : init?.body;
+  const timeoutSignal =
+    init?.signal ?? (typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(30_000) : undefined);
+
   let res: Response;
   try {
-    res = await fetch(path, {
-      ...init,
-      signal: init?.signal ?? (typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(30_000) : undefined),
-      headers: {
-        ...(init?.json !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(init?.headers ?? {}),
-      },
-      body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-    });
+    res = await fetch(path, { ...init, signal: timeoutSignal, headers: baseHeaders, body });
   } catch (err) {
-    // fetch() itself failed: connection refused/reset (preview waking up),
-    // offline, or a timeout. Surface a real, actionable error message.
-    const timedOut = err instanceof DOMException && err.name === 'TimeoutError';
-    throw new ApiClientError(
-      0,
-      timedOut ? 'timeout' : 'network',
-      timedOut
-        ? 'The server took too long to respond. Please try again.'
-        : 'Could not reach the server. If the preview is waking up, wait a few seconds and try again.',
-    );
+    // POST failed at transport level. Some embedded-preview proxies filter
+    // POST; retry once as PUT (auth routes accept PUT as an alias).
+    if (method === 'POST') {
+      try {
+        res = await fetch(path, {
+          ...init,
+          method: 'PUT',
+          signal: timeoutSignal,
+          headers: { ...baseHeaders, 'X-HTTP-Method-Override': 'POST' },
+          body,
+        });
+      } catch {
+        res = undefined as unknown as Response;
+      }
+    } else {
+      res = undefined as unknown as Response;
+    }
+    if (!res) {
+      // Surface a real, actionable error message instead of a generic one.
+      const timedOut = err instanceof DOMException && err.name === 'TimeoutError';
+      throw new ApiClientError(
+        0,
+        timedOut ? 'timeout' : 'network',
+        timedOut
+          ? 'The server took too long to respond. Please try again.'
+          : 'Could not reach the server. If the preview is waking up, wait a few seconds and try again.',
+      );
+    }
   }
   let payload: { ok: boolean; data?: T & { token?: string }; error?: ApiErrorBody } | null = null;
   try {
@@ -113,6 +132,26 @@ export async function api<T = unknown>(
     setAuthToken(null);
   }
   return payload.data as T;
+}
+
+/**
+ * Quick transport probe used to explain network failures on auth forms:
+ * can we reach the server at all, and do GET/POST survive the trip?
+ */
+export async function probeConnectivity(): Promise<string> {
+  const probe = async (method: string): Promise<string> => {
+    try {
+      const r = await fetch('/api/system-status', {
+        method,
+        cache: 'no-store',
+        ...(method === 'POST' ? { headers: { 'Content-Type': 'application/json' }, body: '{}' } : {}),
+      });
+      return `${method} ${r.status}`;
+    } catch {
+      return `${method} rejected`;
+    }
+  };
+  return `[Diagnostics: ${await probe('GET')}, ${await probe('POST')}]`;
 }
 
 export interface SessionUser {

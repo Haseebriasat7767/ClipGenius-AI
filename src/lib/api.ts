@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { AuthError } from './auth';
+import { withCors } from './cors';
 import { recordApiUsage } from './rate-limit';
 
 export { ApiError } from './errors';
@@ -22,26 +23,26 @@ export function apiHandler(routeName: string, handler: Handler): Handler {
     const started = Date.now();
     let status = 200;
     try {
-      const res = await handler(req, ctx);
+      const res = withCors(req, await handler(req, ctx));
       status = res.status;
       return res;
     } catch (err) {
       if (err instanceof ApiError) {
         status = err.status;
-        return jsonError(err.status, err.message, err.code);
+        return withCors(req, jsonError(err.status, err.message, err.code));
       }
       if (err instanceof AuthError) {
         status = err.status;
-        return jsonError(err.status, err.message, 'auth');
+        return withCors(req, jsonError(err.status, err.message, 'auth'));
       }
       if (err instanceof ZodError) {
         status = 400;
         const first = err.errors[0];
-        return jsonError(400, first ? `${first.path.join('.')}: ${first.message}` : 'Invalid input', 'validation');
+        return withCors(req, jsonError(400, first ? `${first.path.join('.')}: ${first.message}` : 'Invalid input', 'validation'));
       }
       console.error(`[api] ${routeName} failed:`, err);
       status = 500;
-      return jsonError(500, 'Internal server error', 'internal');
+      return withCors(req, jsonError(500, 'Internal server error', 'internal'));
     } finally {
       // fire-and-forget usage log (never block the response path on failure)
       recordApiUsage(req, routeName, status, Date.now() - started).catch(() => {});

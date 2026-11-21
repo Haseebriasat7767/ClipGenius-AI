@@ -7,3 +7,7 @@ export const POST = apiHandler('auth/logout', async (req: NextRequest) => {
   clearSessionCookie(res as NextResponse, req);
   return res;
 });
+
+/** PUT alias: some embedded-preview proxies filter POST; the client
+ *  retries POST failures as PUT with X-HTTP-Method-Override. */
+export const PUT = POST;
