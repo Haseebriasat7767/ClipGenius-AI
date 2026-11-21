@@ -68,15 +68,30 @@ export async function api<T = unknown>(
   init?: RequestInit & { json?: unknown },
 ): Promise<T> {
   const token = getAuthToken();
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      ...(init?.json !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-    body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      ...init,
+      signal: init?.signal ?? (typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(30_000) : undefined),
+      headers: {
+        ...(init?.json !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+      body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
+    });
+  } catch (err) {
+    // fetch() itself failed: connection refused/reset (preview waking up),
+    // offline, or a timeout. Surface a real, actionable error message.
+    const timedOut = err instanceof DOMException && err.name === 'TimeoutError';
+    throw new ApiClientError(
+      0,
+      timedOut ? 'timeout' : 'network',
+      timedOut
+        ? 'The server took too long to respond. Please try again.'
+        : 'Could not reach the server. If the preview is waking up, wait a few seconds and try again.',
+    );
+  }
   let payload: { ok: boolean; data?: T & { token?: string }; error?: ApiErrorBody } | null = null;
   try {
     payload = await res.json();
