@@ -19,11 +19,23 @@ export interface FaceSample {
   faces: FaceBox[];
 }
 
-const PYTHON = path.resolve('./.venv/bin/python3');
+const PYTHON_CANDIDATES = [
+  process.env.PYTHON_BIN ?? '',
+  path.resolve('./.venv/bin/python3'),
+  'python3',
+].filter(Boolean);
 const SCRIPT = path.resolve('./scripts/face_detect.py');
 
+function pythonBin(): string | null {
+  if (!fs.existsSync(SCRIPT)) return null;
+  for (const bin of PYTHON_CANDIDATES) {
+    if (bin === 'python3' || fs.existsSync(bin)) return bin;
+  }
+  return null;
+}
+
 function pythonAvailable(): boolean {
-  return fs.existsSync(PYTHON) && fs.existsSync(SCRIPT);
+  return pythonBin() !== null;
 }
 
 export async function detectFaces(
@@ -32,9 +44,11 @@ export async function detectFaces(
 ): Promise<FaceSample[]> {
   if (!pythonAvailable()) return [];
   const interval = opts.intervalSec ?? 1;
+  const python = pythonBin();
+  if (!python) return [];
   return new Promise((resolve) => {
     const child = spawn(
-      PYTHON,
+      python,
       [
         SCRIPT,
         '--video', videoPath,

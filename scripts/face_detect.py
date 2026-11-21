@@ -28,10 +28,14 @@ def main() -> None:
         print(json.dumps([]))
         return
 
-    cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-    if cascade.empty():
+    try:
+        cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+    except Exception:
+        print(json.dumps([]))
+        return
+    if cascade is None or cascade.empty():
         print(json.dumps([]))
         return
 

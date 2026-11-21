@@ -68,6 +68,9 @@ installed via npm — no system packages needed.
 ```bash
 npm install
 
+# face-tracking support (OpenCV helper — recommended, falls back to center crop)
+python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
+
 # 1. Start the bundled development Postgres (leave it running)
 npm run db:start          # writes DATABASE_URL to .env.local
 
