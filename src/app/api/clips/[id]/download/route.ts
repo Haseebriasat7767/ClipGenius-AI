@@ -2,6 +2,7 @@ import { requireUser } from '@/lib/auth';
 import { apiHandler, ApiError } from '@/lib/api';
 import { queryOne } from '@/lib/db';
 import { storageGetStream, storageStat } from '@/lib/storage';
+import { toWebStream } from '@/lib/stream';
 import { slugify } from '@/lib/utils';
 import { Readable } from 'node:stream';
 
@@ -26,10 +27,10 @@ export const GET = apiHandler('clips/download', async (req, ctx) => {
   const stat = await storageStat(clip.video_path);
   if (!stat) throw new ApiError(404, 'Rendered file is missing from storage', 'not_found');
 
-  const stream = (await storageGetStream(clip.video_path)) as unknown as ReadableStream;
+  const stream = (await storageGetStream(clip.video_path)) as unknown as Readable;
   const filename = `${slugify(clip.title, `clip-${clip.id.slice(0, 8)}`)}.mp4`;
 
-  return new Response(stream as unknown as BodyInit, {
+  return new Response(toWebStream(stream), {
     status: 200,
     headers: {
       'Content-Type': 'video/mp4',

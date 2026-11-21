@@ -24,7 +24,7 @@ const nextConfig = {
           // still blocking arbitrary sites. Override with ALLOW_FRAME_ANCESTORS.
           {
             key: 'Content-Security-Policy',
-            value: `frame-ancestors ${process.env.ALLOW_FRAME_ANCESTORS ?? "'self' https://*.arena.ai https://arena.ai https://*.e2b.app"}`,
+            value: `frame-ancestors ${process.env.ALLOW_FRAME_ANCESTORS ?? "'self' https://*.arena.ai https://arena.ai https://*.arena.site https://arena.site https://*.e2b.app"}`,
           },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

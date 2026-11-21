@@ -5,6 +5,7 @@
 import { requireUser } from '@/lib/auth';
 import { apiHandler, ApiError } from '@/lib/api';
 import { storageGetStream, storageStat } from '@/lib/storage';
+import { toWebStream } from '@/lib/stream';
 import type { Readable } from 'node:stream';
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -50,7 +51,7 @@ export const GET = apiHandler('media/serve', async (req, ctx) => {
         });
       }
       const stream = (await storageGetStream(key, { start, end })) as Readable;
-      return new Response(stream as unknown as BodyInit, {
+      return new Response(toWebStream(stream), {
         status: 206,
         headers: {
           'Content-Type': contentType,
@@ -64,7 +65,7 @@ export const GET = apiHandler('media/serve', async (req, ctx) => {
   }
 
   const stream = (await storageGetStream(key)) as Readable;
-  return new Response(stream as unknown as BodyInit, {
+  return new Response(toWebStream(stream), {
     status: 200,
     headers: {
       'Content-Type': contentType,
